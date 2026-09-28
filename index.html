@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>收支管理 · 小账本</title>
+<style>
+  * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
+  body { background: #f5f7fb; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 12px; }
+  .app-container { max-width: 600px; width: 100%; background: #fff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,10,30,.08); padding: 24px 20px 32px; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #1a2639; }
+  .header-badge { background: #eef2ff; color: #3b5bdb; padding: 8px 16px; border-radius: 40px; font-size: 14px; font-weight: 600; }
+
+  .balance-card { background: linear-gradient(135deg, #1e2b4f 0%, #101a2e 100%); border-radius: 24px; padding: 24px 20px; color: white; margin-bottom: 24px; }
+  .balance-label { font-size: 15px; opacity: .75; margin-bottom: 6px; }
+  .balance-amount { font-size: 42px; font-weight: 700; line-height: 1.2; word-break: break-word; }
+  .balance-amount small { font-size: 20px; font-weight: 500; opacity: .7; margin-right: 4px; }
+  .balance-stats { display: flex; gap: 28px; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.15); }
+  .stat-label { font-size: 13px; opacity: .7; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 600; }
+  .stat-value.income { color: #6ee7b7; }
+  .stat-value.expense { color: #fca5a5; }
+
+  .add-section { background: #f8fafd; border-radius: 22px; padding: 18px 16px; margin-bottom: 28px; border: 1px solid #e9edf5; }
+  .add-title { font-size: 15px; font-weight: 600; color: #1e2b4f; margin-bottom: 14px; }
+  .form-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  .type-toggle { display: flex; background: #fff; padding: 4px; border-radius: 14px; border: 1px solid #dde3ed; flex: 2; min-width: 140px; }
+  .type-btn { flex: 1; padding: 10px 0; border: none; background: transparent; border-radius: 10px; font-size: 15px; font-weight: 600; color: #6b7a8f; cursor: pointer; transition: all .2s; }
+  .type-btn.active[data-type="income"] { background: #059669; color: #fff; }
+  .type-btn.active[data-type="expense"] { background: #b91c1c; color: #fff; }
+
+  .amount-input-wrapper { flex: 3; min-width: 150px; position: relative; }
+  .amount-input-wrapper input { width: 100%; padding: 12px 16px 12px 40px; border: 1px solid #dde3ed; border-radius: 14px; font-size: 16px; font-weight: 500; background: #fff; outline: none; }
+  .amount-input-wrapper input:focus { border-color: #1e2b4f; }
+  .amount-input-wrapper::before { content: '¥'; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #8b9bb5; font-weight: 500; }
+  .description-wrapper { flex: 1; min-width: 160px; }
+  .description-wrapper input { width: 100%; padding: 12px 16px; border: 1px solid #dde3ed; border-radius: 14px; font-size: 15px; background: #fff; outline: none; }
+  .description-wrapper input:focus { border-color: #1e2b4f; }
+
+  .add-btn { width: 100%; padding: 14px; background: #1e2b4f; color: #fff; border: none; border-radius: 16px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all .2s; margin-top: 6px; }
+  .add-btn:hover { background: #101a2e; }
+  .add-btn:active { transform: scale(0.99); }
+
+  .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .list-header h3 { font-size: 17px; font-weight: 600; color: #1e2b4f; }
+  .clear-btn { background: transparent; border: none; color: #b91c1c; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 30px; cursor: pointer; }
+  .clear-btn:hover { background: #fee2e2; }
+
+  .transaction-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
+
+  .transaction-item { display: flex; align-items: center; justify-content: space-between; background: #f8fafd; padding: 14px 16px; border-radius: 18px; border: 1px solid #eef2f7; }
+  .item-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .item-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .item-icon.income { background: #d1fae5; color: #047857; }
+  .item-icon.expense { background: #fee2e2; color: #b91c1c; }
+  .item-info { flex: 1; min-width: 0; }
+  .item-desc { font-size: 15px; font-weight: 500; color: #1e2b4f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-date { font-size: 12px; color: #8b9bb5; margin-top: 2px; }
+  .item-amount { font-size: 18px; font-weight: 700; flex-shrink: 0; margin-left: 12px; }
+  .item-amount.income { color: #047857; }
+  .item-amount.expense { color: #b91c1c; }
+  .delete-btn { background: transparent; border: none; font-size: 18px; color: #cbd5e1; cursor: pointer; padding: 6px 8px; border-radius: 50%; margin-left: 6px; }
+  .delete-btn:hover { color: #b91c1c; background: #fee2e2; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #a0aec0; font-size: 15px; background: #f8fafd; border-radius: 20px; border: 1px dashed #dde3ed; }
+  .empty-state span { font-size: 28px; display: block; margin-bottom: 8px; opacity: .6; }
+
+  @media (max-width: 480px) {
+    .app-container { padding: 20px 14px 24px; border-radius: 24px; }
+    .balance-amount { font-size: 34px; }
+    .form-row { flex-direction: column; }
+    .type-toggle, .amount-input-wrapper, .description-wrapper { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app-container">
+  <div class="header">
+    <h1>📒 小账本</h1>
+    <div class="header-badge">💰 收支管理</div>
+  </div>
+
+  <div class="balance-card">
+    <div class="balance-label">当前余额</div>
+    <div class="balance-amount" id="balanceDisplay"><small>¥</small>0.00</div>
+    <div class="balance-stats">
+      <div class="stat-item">
+        <div class="stat-label">📈 总收入</div>
+        <div class="stat-value income" id="totalIncome">¥0.00</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">📉 总支出</div>
+        <div class="stat-value expense" id="totalExpense">¥0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="add-section">
+    <div class="add-title">➕ 记一笔</div>
+    <div class="form-row">
+      <div class="type-toggle">
+        <button type="button" class="type-btn" data-type="income" id="btnIncome">收入</button>
+        <button type="button" class="type-btn active" data-type="expense" id="btnExpense">支出</button>
+      </div>
+      <div class="amount-input-wrapper">
+        <input type="number" id="amountInput" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="description-wrapper">
+        <input type="text" id="descInput" placeholder="备注 (如: 午餐、工资)" maxlength="30">
+      </div>
+    </div>
+    <button type="button" class="add-btn" id="addBtn">添加记录</button>
+  </div>
+
+  <div class="list-header">
+    <h3>📋 交易记录</h3>
+    <button type="button" class="clear-btn" id="clearAllBtn">清空全部</button>
+  </div>
+  <div class="transaction-list" id="transactionList"></div>
+</div>
+
+<script>
+// ===== 全局变量 =====
+var transactions = [];
+var currentType = 'expense';
+
+// ===== 工具函数 =====
+function formatMoney(v) {
+  var n = Number(v);
+  if (isNaN(n)) n = 0;
+  return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseAmount(s) {
+  var n = parseFloat(s);
+  if (isNaN(n) || n <= 0) return 0;
+  return n;
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  var d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+// ===== 数据存取 =====
+function loadTransactions() {
+  try {
+    var stored = localStorage.getItem('income_expense_transactions');
+    if (stored) {
+      transactions = JSON.parse(stored);
+      if (!Array.isArray(transactions)) transactions = [];
+    } else {
+      transactions = [
+        { id: '1', type: 'income', amount: 3500, description: '工资', date: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { id: '2', type: 'expense', amount: 45.5, description: '午餐', date: new Date(Date.now() - 86400000).toISOString() },
+        { id: '3', type: 'expense', amount: 120, description: '超市购物', date: new Date().toISOString() },
+        { id: '4', type: 'income', amount: 200, description: '红包', date: new Date().toISOString() }
+      ];
+      saveTransactions();
+    }
+  } catch (e) {
+    transactions = [];
+  }
+}
+
+function saveTransactions() {
+  try {
+    localStorage.setItem('income_expense_transactions', JSON.stringify(transactions));
+  } catch (e) {}
+}
+
+// ===== 更新余额卡片 =====
+function updateStats() {
+  var inc = 0, exp = 0;
+  for (var i = 0; i < transactions.length; i++) {
+    if (transactions[i].type === 'income') inc += transactions[i].amount;
+    else exp += transactions[i].amount;
+  }
+  document.getElementById('balanceDisplay').innerHTML = '<small>¥</small>' + formatMoney(inc - exp);
+  document.getElementById('totalIncome').textContent = '¥' + formatMoney(inc);
+  document.getElementById('totalExpense').textContent = '¥' + formatMoney(exp);
+}
+
+// ===== 生成单条记录 DOM =====
+function createTransactionElement(t) {
+  var el = document.createElement('div');
+  el.className = 'transaction-item';
+  var isIncome = t.type === 'income';
+  var sign = isIncome ? '+' : '-';
+  var cls = isIncome ? 'income' : 'expense';
+  var icon = isIncome ? '💰' : '💸';
+  var d = new Date(t.date);
+  var ds = (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+           String(d.getHours()).padStart(2, '0') + ':' +
+           String(d.getMinutes()).padStart(2, '0');
+
+  el.innerHTML =
+    '<div class="item-left">' +
+      '<div class="item-icon ' + cls + '">' + icon + '</div>' +
+      '<div class="item-info">' +
+        '<div class="item-desc">' + escapeHtml(t.description || '无备注') + '</div>' +
+        '<div class="item-date">' + ds + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;">' +
+      '<div class="item-amount ' + cls + '">' + sign + '¥' + formatMoney(t.amount) + '</div>' +
+      '<button type="button" class="delete-btn" data-id="' + t.id + '" title="删除">✕</button>' +
+    '</div>';
+  return el;
+}
+
+// ===== 渲染列表 =====
+function renderTransactions() {
+  var list = document.getElementById('transactionList');
+  list.innerHTML = '';
+  if (transactions.length === 0) {
+    var e = document.createElement('div');
+    e.className = 'empty-state';
+    e.innerHTML = '<span>📭</span>还没有交易记录，记一笔吧';
+    list.appendChild(e);
+  } else {
+    var sorted = transactions.slice().sort(function(a, b) {
+      return new Date(b.date) - new Date(a.date);
+    });
+    for (var i = 0; i < sorted.length; i++) {
+      list.appendChild(createTransactionElement(sorted[i]));
+    }
+  }
+  updateStats();
+}
+
+// ===== 添加交易 =====
+function addTransaction() {
+  var amtInput = document.getElementById('amountInput');
+  var descInput = document.getElementById('descInput');
+  var amt = parseAmount(amtInput.value.trim());
+  if (amt <= 0) {
+    alert('请输入有效的金额 (大于0)');
+    amtInput.focus();
+    return;
+  }
+  var desc = descInput.value.trim() || (currentType === 'income' ? '收入' : '支出');
+
+  transactions.push({
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 10),
+    type: currentType,
+    amount: amt,
+    description: desc,
+    date: new Date().toISOString()
+  });
+  saveTransactions();
+  amtInput.value = '';
+  descInput.value = '';
+  renderTransactions();
+  amtInput.focus();
+}
+
+// ===== 删除 =====
+function deleteTransactionById(id) {
+  transactions = transactions.filter(function(t) { return t.id !== id; });
+  saveTransactions();
+  renderTransactions();
+}
+
+// ===== 清空 =====
+function clearAllTransactions() {
+  if (transactions.length === 0) return;
+  if (confirm('确定要清空所有交易记录吗？此操作不可恢复。')) {
+    transactions = [];
+    saveTransactions();
+    renderTransactions();
+  }
+}
+
+// ===== 切换类型 =====
+function setType(type) {
+  currentType = type;
+  var btns = document.querySelectorAll('.type-btn');
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].getAttribute('data-type') === type) {
+      btns[i].classList.add('active');
+    } else {
+      btns[i].classList.remove('active');
+    }
+  }
+}
+
+// ===== 事件绑定 =====
+function bindEvents() {
+  document.getElementById('btnIncome').addEventListener('click', function() { setType('income'); });
+  document.getElementById('btnExpense').addEventListener('click', function() { setType('expense'); });
+  document.getElementById('addBtn').addEventListener('click', addTransaction);
+
+  document.getElementById('amountInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addTransaction(); }
+  });
+  document.getElementById('descInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); addTransaction(); }
+  });
+
+  document.getElementById('transactionList').addEventListener('click', function(e) {
+    var btn = e.target.closest('.delete-btn');
+    if (btn) deleteTransactionById(btn.getAttribute('data-id'));
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', clearAllTransactions);
+}
+
+// ===== 启动 =====
+loadTransactions();
+setType('expense');
+renderTransactions();
+bindEvents();
+</script>
+</body>
+</html>
